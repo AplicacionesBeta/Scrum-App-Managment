@@ -1,0 +1,127 @@
+"Genera una aplicación web de gestión Scrum en un solo archivo HTML con las siguientes características:
+
+1. **Configuración técnica**:
+   - Tecnologías: HTML5, CSS puro, JavaScript vanilla.
+   - Firebase (Firestore + Auth) con esta configuración EXACTA:
+     ```javascript
+     const firebaseConfig = {
+       apiKey: "AIzaSyCetdAHhkQOZFLoCza6iQCy2kZAzqi6lF0",
+       authDomain: "kanbancalmmind.firebaseapp.com",
+       projectId: "kanbancalmmind",
+       storageBucket: "kanbancalmmind.firebasestorage.app",
+       messagingSenderId: "781519601193",
+       appId: "1:781519601193:web:2d9988167cd2d20dc62638"
+     };
+     ```
+   - CDNs requeridos (en <head>):
+     ```html
+     <!-- Firebase -->
+     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js"></script>
+     <!-- TailwindCSS -->
+     <script src="https://cdn.tailwindcss.com"></script>
+     <!-- Chart.js -->
+     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+     <!-- Font Awesome -->
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+     ```
+
+2. **Estructura de Firestore**:
+   - Colección `users` (documentos por usuario):
+     ```javascript
+     {
+       email: "string",
+       role: "admin" | "user", // Roles obligatorios
+       createdAt: timestamp
+     }
+     ```
+   - Colección `tasks` (documentos por tarea):
+     ```javascript
+     {
+       title: "string",
+       points: number, // Puntos de historia (Fibonacci),
+       status: "todo" | "inProgress" | "done",
+       dueDate: timestamp,
+       createdBy: "userId"
+     }
+     ```
+
+3. **Funcionalidades en un solo HTML**:
+   - **Sección de Login/Registro**:
+     - Formulario de login con validación.
+     - Formulario de registro con campo para seleccionar rol (admin/user).
+     - Botón "¿Olvidaste tu contraseña?".
+   - **Tablero Kanban**:
+     - 3 columnas (To Do, In Progress, Done) con drag-and-drop.
+     - Formulario flotante para agregar tareas.
+   - **Burndown Chart**:
+     - Gráfico generado con Chart.js que muestre progreso del sprint.
+   - **Control de acceso**:
+     - Si el usuario no está autenticado, mostrar solo la sección de login.
+     - Restringir ciertas funciones (ej. eliminar tareas) solo para roles "admin".
+
+4. **Código de ejemplo requerido**:
+   - Registro con rol:
+     ```javascript
+     document.getElementById("register-form").addEventListener("submit", async (e) => {
+       e.preventDefault();
+       const email = e.target.email.value;
+       const password = e.target.password.value;
+       const role = e.target.role.value;
+
+       try {
+         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+         await setDoc(doc(db, "users", userCredential.user.uid), {
+           email,
+           role,
+           createdAt: serverTimestamp()
+         });
+         showKanbanSection(); // Mostrar tablero después de registro
+       } catch (error) {
+         alert("Error: " + error.message);
+       }
+     });
+     ```
+   - Verificación de rol:
+     ```javascript
+     function checkAdmin() {
+       return auth.currentUser && userDoc?.data()?.role === "admin";
+     }
+     ```
+
+5. **Requisitos estrictos**:
+   - Todo el código debe estar en UN ARCHIVO HTML (JS/CSS inline).
+   - Diseño responsive con TailwindCSS.
+   - Comentar cada sección importante (ej: "// Inicialización de Firebase").
+   - Funcionar inmediatamente al abrir en navegador sin pasos adicionales.
+
+6. **Estructura HTML esperada**:
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- CDNs y metadatos aquí -->
+  <style>
+    /* CSS inline aquí */
+    .hidden { display: none; }
+    .task { cursor: grab; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <!-- Login/Registro -->
+  <div id="auth-section">
+    <!-- Formularios aquí -->
+  </div>
+
+  <!-- Tablero Kanban (oculto inicialmente) -->
+  <div id="kanban-section" class="hidden">
+    <!-- Columnas y gráficos aquí -->
+  </div>
+
+  <!-- Scripts inline -->
+  <script>
+    // Firebase y lógica aquí
+  </script>
+</body>
+</html>
