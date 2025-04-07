@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrum Management App</title>
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js"></script>
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* CSS inline aquí */
+    .hidden { display: none; }
+    .task { cursor: grab; }
+    .task:active { cursor: grabbing; }
+    .column-drop { min-height: 200px; }
+    .burndown-container { height: 300px; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Login/Registro -->
+  <div id="auth-section" class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-md bg-white rounded-lg shadow-md p-6">
+      <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">Scrum Management App</h1>
+      
+      <!-- Navegación de pestañas -->
+      <div class="flex mb-4 border-b">
+        <button id="login-tab" class="flex-1 py-2 font-medium text-center border-b-2 border-blue-500 text-blue-500">Login</button>
+        <button id="register-tab" class="flex-1 py-2 font-medium text-center text-gray-500">Registro</button>
+      </div>
+      
+      <!-- Formulario de Login -->
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label for="login-email" class="block text-sm font-medium text-gray-700">Email</label>
+          <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+          <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div class="flex items-center justify-between">
+          <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Iniciar Sesión
+          </button>
+        </div>
+      </form>
+      
+      <!-- Botón "¿Olvidaste tu contraseña?" -->
+      <div class="text-center mt-4">
+        <button id="forgot-password" class="text-sm text-blue-600 hover:text-blue-800">¿Olvidaste tu contraseña?</button>
+      </div>
+      
+      <!-- Formulario de Registro (oculto inicialmente) -->
+      <form id="register-form" class="space-y-4 hidden">
+        <div>
+          <label for="register-email" class="block text-sm font-medium text-gray-700">Email</label>
+          <input type="email" id="register-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="register-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+          <input type="password" id="register-password" name="password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="register-role" class="block text-sm font-medium text-gray-700">Rol</label>
+          <select id="register-role" name="role" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            <option value="user">Usuario</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div>
+          <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Registrarse
+          </button>
+        </div>
+      </form>
+      
+      <!-- Formulario de Recuperación de Contraseña (oculto inicialmente) -->
+      <form id="reset-password-form" class="space-y-4 hidden">
+        <div>
+          <label for="reset-email" class="block text-sm font-medium text-gray-700">Email</label>
+          <input type="email" id="reset-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Enviar Email de Recuperación
+          </button>
+        </div>
+        <div class="text-center">
+          <button id="back-to-login" class="text-sm text-blue-600 hover:text-blue-800">Volver al Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tablero Kanban (oculto inicialmente) -->
+  <div id="kanban-section" class="hidden flex flex-col min-h-screen">
+    <!-- Barra superior -->
+    <header class="bg-blue-600 text-white p-4 shadow-md">
+      <div class="container mx-auto flex justify-between items-center">
+        <h1 class="text-xl font-bold">Scrum Management App</h1>
+        <div class="flex items-center space-x-4">
+          <span id="user-email" class="hidden md:inline"></span>
+          <button id="logout-btn" class="px-3 py-1 bg-blue-700 hover:bg-blue-800 rounded-md">
+            <i class="fas fa-sign-out-alt mr-1"></i> Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </header>
+    
+    <main class="container mx-auto p-4 flex-grow">
+      <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <!-- Botón para agregar tarea -->
+        <button id="add-task-btn" class="flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow">
+          <i class="fas fa-plus mr-2"></i> Nueva Tarea
+        </button>
+        
+        <!-- Información del Sprint -->
+        <div class="bg-white rounded-md shadow p-4 flex-grow">
+          <h2 class="text-lg font-semibold mb-2">Información del Sprint</h2>
+          <div class="flex flex-wrap gap-3">
+            <div>
+              <span class="font-medium">Tareas:</span>
+              <span id="total-tasks">0</span>
+            </div>
+            <div>
+              <span class="font-medium">Puntos Totales:</span>
+              <span id="total-points">0</span>
+            </div>
+            <div>
+              <span class="font-medium">Completado:</span>
+              <span id="completion-percentage">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Burndown Chart -->
+      <div class="bg-white rounded-md shadow mb-6">
+        <div class="p-4 border-b">
+          <h2 class="text-lg font-semibold">Burndown Chart</h2>
+        </div>
+        <div class="p-4 burndown-container">
+          <canvas id="burndown-chart"></canvas>
+        </div>
+      </div>
+      
+      <!-- Kanban Board -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Columna: To Do -->
+        <div class="bg-white rounded-md shadow">
+          <div class="p-3 bg-gray-100 border-b flex justify-between items-center">
+            <h3 class="font-medium">To Do</h3>
+            <span id="todo-count" class="bg-gray-300 text-gray-700 px-2 py-1 rounded-full text-xs">0</span>
+          </div>
+          <div id="todo-column" class="p-3 column-drop" ondrop="drop(event, 'todo')" ondragover="allowDrop(event)">
+            <!-- Las tareas se cargarán aquí dinámicamente -->
+          </div>
+        </div>
+        
+        <!-- Columna: In Progress -->
+        <div class="bg-white rounded-md shadow">
+          <div class="p-3 bg-gray-100 border-b flex justify-between items-center">
+            <h3 class="font-medium">In Progress</h3>
+            <span id="inProgress-count" class="bg-blue-200 text-blue-700 px-2 py-1 rounded-full text-xs">0</span>
+          </div>
+          <div id="inProgress-column" class="p-3 column-drop" ondrop="drop(event, 'inProgress')" ondragover="allowDrop(event)">
+            <!-- Las tareas se cargarán aquí dinámicamente -->
+          </div>
+        </div>
+        
+        <!-- Columna: Done -->
+        <div class="bg-white rounded-md shadow">
+          <div class="p-3 bg-gray-100 border-b flex justify-between items-center">
+            <h3 class="font-medium">Done</h3>
+            <span id="done-count" class="bg-green-200 text-green-700 px-2 py-1 rounded-full text-xs">0</span>
+          </div>
+          <div id="done-column" class="p-3 column-drop" ondrop="drop(event, 'done')" ondragover="allowDrop(event)">
+            <!-- Las tareas se cargarán aquí dinámicamente -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Modal para agregar/editar tarea (oculto inicialmente) -->
+  <div id="task-modal" class="hidden fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+      <h2 id="modal-title" class="text-xl font-bold mb-4">Nueva Tarea</h2>
+      <form id="task-form" class="space-y-4">
+        <input type="hidden" id="task-id">
+        <div>
+          <label for="task-title" class="block text-sm font-medium text-gray-700">Título</label>
+          <input type="text" id="task-title" name="title" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="task-points" class="block text-sm font-medium text-gray-700">Puntos de Historia</label>
+          <select id="task-points" name="points" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="8">8</option>
+            <option value="13">13</option>
+            <option value="21">21</option>
+          </select>
+        </div>
+        <div>
+          <label for="task-due-date" class="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
+          <input type="date" id="task-due-date" name="dueDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button type="button" id="cancel-task-btn" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Cancelar
+          </button>
+          <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts inline -->
+  <script>
+    // Inicialización de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCetdAHhkQOZFLoCza6iQCy2kZAzqi6lF0",
+      authDomain: "kanbancalmmind.firebaseapp.com",
+      projectId: "kanbancalmmind",
+      storageBucket: "kanbancalmmind.firebasestorage.app",
+      messagingSenderId: "781519601193",
+      appId: "1:781519601193:web:2d9988167cd2d20dc62638"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    
+    // Acceso a servicios de Firebase
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
+    
+    // Variables globales
+    let currentUser = null;
+    let userDoc = null;
+    let burndownChart = null;
+    
+    // Funciones de utilidad
+    function showSection(sectionId) {
+      document.querySelectorAll('body > div').forEach(div => {
+        div.classList.add('hidden');
+      });
+      document.getElementById(sectionId).classList.remove('hidden');
+    }
+    
+    function showTab(formId) {
+      document.querySelectorAll('#auth-section form').forEach(form => {
+        form.classList.add('hidden');
+      });
+      document.getElementById(formId).classList.remove('hidden');
+    }
+    
+    function showModal(modalId) {
+      document.getElementById(modalId).classList.remove('hidden');
+    }
+    
+    function hideModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
+    
+    // Verificación de roles y permisos
+    async function checkUserRole() {
+      if (!auth.currentUser) return null;
+      
+      try {
+        const userRef = db.collection('users').doc(auth.currentUser.uid);
+        const doc = await userRef.get();
+        userDoc = doc;
+        return doc.exists ? doc.data().role : null;
+      } catch (error) {
+        console.error("Error al verificar rol:", error);
+        return null;
+      }
+    }
+    
+    function checkAdmin() {
+      return auth.currentUser && userDoc?.data()?.role === "admin";
+    }
+    
+    // Funciones de autenticación
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const password = e.target.password.value;
+      
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        // El cambio de sección se maneja en el listener de autenticación
+      } catch (error) {
+        alert("Error de inicio de sesión: " + error.message);
+      }
+    });
+    
+    document.getElementById("register-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const password = e.target.password.value;
+      const role = e.target.role.value;
+      
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection("users").doc(userCredential.user.uid).set({
+          email,
+          role,
+          createdAt: serverTimestamp()
+        });
+        // El cambio de sección se maneja en el listener de autenticación
+      } catch (error) {
+        alert("Error de registro: " + error.message);
+      }
+    });
+    
+    document.getElementById("reset-password-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      
+      try {
+        await auth.sendPasswordResetEmail(email);
+        alert("Email de recuperación enviado. Revisa tu bandeja de entrada.");
+        showTab("login-form");
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    });
+    
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      auth.signOut();
+    });
+    
+    // Navegación entre formularios de autenticación
+    document.getElementById("login-tab").addEventListener("click", () => {
+      document.getElementById("login-tab").classList.add("border-b-2", "border-blue-500", "text-blue-500");
+      document.getElementById("register-tab").classList.remove("border-b-2", "border-blue-500", "text-blue-500");
+      document.getElementById("register-tab").classList.add("text-gray-500");
+      showTab("login-form");
+    });
+    
+    document.getElementById("register-tab").addEventListener("click", () => {
+      document.getElementById("register-tab").classList.add("border-b-2", "border-blue-500", "text-blue-500");
+      document.getElementById("login-tab").classList.remove("border-b-2", "border-blue-500", "text-blue-500");
+      document.getElementById("login-tab").classList.add("text-gray-500");
+      showTab("register-form");
+    });
+    
+    document.getElementById("forgot-password").addEventListener("click", () => {
+      showTab("reset-password-form");
+    });
+    
+    document.getElementById("back-to-login").addEventListener("click", (e) => {
+      e.preventDefault();
+      showTab("login-form");
+    });
+    
+    // Observer de autenticación
+    auth.onAuthStateChanged(async (user) => {
+      currentUser = user;
+      
+      if (user) {
+        // Usuario autenticado
+        document.getElementById("user-email").textContent = user.email;
+        await checkUserRole();
+        loadTasks();
+        initBurndownChart();
+        showSection("kanban-section");
+      } else {
+        // Usuario no autenticado
+        userDoc = null;
+        showSection("auth-section");
+        showTab("login-form");
+      }
+    });
+    
+    // Funciones del tablero Kanban
+    async function loadTasks() {
+      try {
+        // Limpiar columnas
+        document.getElementById("todo-column").innerHTML = "";
+        document.getElementById("inProgress-column").innerHTML = "";
+        document.getElementById("done-column").innerHTML = "";
+        
+        // Obtener tareas de Firestore
+        const snapshot = await db.collection("tasks").get();
+        
+        let todoCount = 0;
+        let inProgressCount = 0;
+        let doneCount = 0;
+        let totalPoints = 0;
+        let completedPoints = 0;
+        
+        snapshot.forEach((doc) => {
+          const task = doc.data();
+          task.id = doc.id;
+          
+          // Crear elemento de tarea
+          const taskEl = createTaskElement(task);
+          
+          // Agregar a la columna correspondiente
+          document.getElementById(`${task.status}-column`).appendChild(taskEl);
+          
+          // Actualizar contadores
+          if (task.status === "todo") todoCount++;
+          else if (task.status === "inProgress") inProgressCount++;
+          else if (task.status === "done") {
+            doneCount++;
+            completedPoints += task.points;
+          }
+          
+          totalPoints += task.points;
+        });
+        
+        // Actualizar contadores en la UI
+        document.getElementById("todo-count").textContent = todoCount;
+        document.getElementById("inProgress-count").textContent = inProgressCount;
+        document.getElementById("done-count").textContent = doneCount;
+        document.getElementById("total-tasks").textContent = todoCount + inProgressCount + doneCount;
+        document.getElementById("total-points").textContent = totalPoints;
+        
+        // Calcular porcentaje de completitud
+        const completionPercentage = totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
+        document.getElementById("completion-percentage").textContent = `${completionPercentage}%`;
+        
+        // Actualizar datos del burndown chart
+        updateBurndownData(snapshot.docs.map(doc => ({...doc.data(), id: doc.id})));
+        
+      } catch (error) {
+        console.error("Error al cargar tareas:", error);
+      }
+    }
+    
+    function createTaskElement(task) {
+      const div = document.createElement("div");
+      div.className = "task bg-white border rounded-md p-3 mb-2 shadow-sm hover:shadow";
+      div.draggable = true;
+      div.id = `task-${task.id}`;
+      div.setAttribute("data-id", task.id);
+      div.setAttribute("ondragstart", "drag(event)");
+      
+      const dueDate = task.dueDate ? new Date(task.dueDate.seconds * 1000) : null;
+      const formattedDate = dueDate ? dueDate.toLocaleDateString() : "Sin fecha";
+      
+      div.innerHTML = `
+        <div class="flex justify-between items-start">
+          <div>
+            <h4 class="font-medium">${task.title}</h4>
+            <div class="text-sm text-gray-600">Vencimiento: ${formattedDate}</div>
+          </div>
+          <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">${task.points} pts</span>
+        </div>
+        <div class="flex mt-2 justify-end space-x-2">
+          ${checkAdmin() ? `
+            <button class="edit-task-btn text-xs text-blue-600 hover:text-blue-800" data-id="${task.id}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="delete-task-btn text-xs text-red-600 hover:text-red-800" data-id="${task.id}">
+              <i class="fas fa-trash"></i>
+            </button>
+          ` : ''}
+        </div>
+      `;
+      
+      // Agregar event listeners para editar/eliminar
+      setTimeout(() => {
+        const editBtn = div.querySelector(".edit-task-btn");
+        if (editBtn) {
+          editBtn.addEventListener("click", () => editTask(task.id));
+        }
+        
+        const deleteBtn = div.querySelector(".delete-task-btn");
+        if (deleteBtn) {
+          deleteBtn.addEventListener("click", () => deleteTask(task.id));
+        }
+      }, 0);
+      
+      return div;
+    }
+    
+    // Funciones para drag and drop
+    window.allowDrop = function(ev) {
+      ev.preventDefault();
+    };
+    
+    window.drag = function(ev) {
+      ev.dataTransfer.setData("text", ev.target.getAttribute("data-id"));
+    };
+    
+    window.drop = async function(ev, status) {
+      ev.preventDefault();
+      const taskId = ev.dataTransfer.getData("text");
+      
+      try {
+        // Actualizar estado en Firestore
+        await db.collection("tasks").doc(taskId).update({
+          status: status
+        });
+        
+        // Recargar tareas
+        loadTasks();
+      } catch (error) {
+        console.error("Error al actualizar tarea:", error);
+      }
+    };
+    
+    // Funciones CRUD para tareas
+    document.getElementById("add-task-btn").addEventListener("click", () => {
+      // Resetear formulario
+      document.getElementById("task-form").reset();
+      document.getElementById("task-id").value = "";
+      document.getElementById("modal-title").textContent = "Nueva Tarea";
+      
+      // Establecer fecha mínima para el campo de fecha
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById("task-due-date").min = tomorrow.toISOString().split('T')[0];
+      
+      showModal("task-modal");
+    });
+    
+    document.getElementById("cancel-task-btn").addEventListener("click", () => {
+      hideModal("task-modal");
+    });
+    
+    document.getElementById("task-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const taskId = document.getElementById("task-id").value;
+      const title = document.getElementById("task-title").value;
+      const points = parseInt(document.getElementById("task-points").value);
+      const dueDateStr = document.getElementById("task-due-date").value;
+      
+      // Convertir la fecha string a Date
+      const dueDate = new Date(dueDateStr);
+      
+      try {
+        if (taskId) {
+          // Actualizar tarea existente
+          await db.collection("tasks").doc(taskId).update({
+            title,
+            points,
+            dueDate: firebase.firestore.Timestamp.fromDate(dueDate)
+          });
+        } else {
+          // Crear nueva tarea
+          await db.collection("tasks").add({
+            title,
+            points,
+            status: "todo",
+            dueDate: firebase.firestore.Timestamp.fromDate(dueDate),
+            createdBy: auth.currentUser.uid,
+            createdAt: serverTimestamp()
+          });
+        }
+        
+        hideModal("task-modal");
+        loadTasks();
+      } catch (error) {
+        console.error("Error al guardar tarea:", error);
+        alert("Error: " + error.message);
+      }
+    });
+    
+    async function editTask(taskId) {
+      try {
+        const doc = await db.collection("tasks").doc(taskId).get();
+        if (!doc.exists) return;
+        
+        const task = doc.data();
+        
+        // Llenar formulario con datos de la tarea
+        document.getElementById("task-id").value = taskId;
+        document.getElementById("task-title").value = task.title;
+        document.getElementById("task-points").value = task.points;
+        
+        // Formatear fecha para el input date
+        if (task.dueDate) {
+          const date = new Date(task.dueDate.seconds * 1000);
+          const formattedDate = date.toISOString().split('T')[0];
+          document.getElementById("task-due-date").value = formattedDate;
+        }
+        
+        document.getElementById("modal-title").textContent = "Editar Tarea";
+        showModal("task-modal");
+      } catch (error) {
+        console.error("Error al cargar tarea:", error);
+      }
+    }
+    
+    async function deleteTask(taskId) {
+      if (!confirm("¿Estás seguro de que deseas eliminar esta tarea?")) return;
+      
+      try {
+        await db.collection("tasks").doc(taskId).delete();
+        loadTasks();
+      } catch (error) {
+        console.error("Error al eliminar tarea:", error);
+      }
+    }
+    
+    // Funciones para el Burndown Chart
+    function initBurndownChart() {
+      const ctx = document.getElementById('burndown-chart').getContext('2d');
+      
+      burndownChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Puntos Ideales',
+              data: [],
+              borderColor: 'rgba(255, 99, 132, 1)',
+              borderDash: [5, 5],
+              fill: false
+            },
+            {
+              label: 'Puntos Reales',
+              data: [],
+              borderColor: 'rgba(54, 162, 235, 1)',
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Puntos Restantes'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Días del Sprint'
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    function updateBurndownData(tasks) {
